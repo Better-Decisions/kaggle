@@ -55,11 +55,10 @@ setwd("C:/Users/rodolfo.paula/Desktop/PESSOAL_RODOLFO/Better Decisions/scripts/k
 
 titanic.treino <- read.csv("train.csv")
 
-titanic.treino <- na.omit(titanic.treino)
 
 
 titanic.teste <- read.csv("test.csv")
-titanic.teste <- na.omit(titanic.teste)
+
 
 
 dim(titanic.treino)
@@ -94,13 +93,27 @@ summary(titanic.treino.quanti)
 
 
 ```
-
+Como vimos na estatistica descritiva, a variável Age possui valores NAs. Na etapa seguinte trata-los adequadamente.
 Uma tabela de frequência vai trazer a informação de quantas pessoas sobreviveram e quantas morreram de acordo com o banco de dados de treino. Essa informação é um dado interessante para variavel Y do modelo. 
 
 ```{r}
 #Tabela de frequências absolutas da variável 'Survived'
 table(titanic.treino$Survived) 
 
+```
+
+Conferindo se existe Valores nulos ou NA no banco de dados de teste. Caso a variável seja quantitativa e possuir valores nulos, vamos fazer a substituição pelo valor da Mediana daquela variável e caso a variável seja qualitativa a substituição será feita pela moda obtida para aquela variável. 
+
+
+```{r}
+
+# Aplicando o sumário para saber quais variáveis apresentam valores NAs. 
+summary(titanic.teste)
+
+
+titanic.treino$Age <- titanic.treino$Age[titanic.treino$Age == NA] <- 28
+titanic.teste$Age <- titanic.teste$Age[titanic.teste$Age == NA] <- 27
+titanic.teste$Fare <- titanic.teste$Fare[titanic.teste$Fare == NA] <- 14.45
 ```
 
 #########################################################################
@@ -457,7 +470,83 @@ write.csv(titanic.kaggle, file="titanic_kaggle.csv",append = F,sep = ",",
 ```
 
 
+### **4.0 Random Forest**
+
+O algoritmo Random Forest é muito utilizado para problemas de regressão e classificação. O algoritimo conhecido como Floresta Aleatória de Breiman, homenagem ao autor do código original em Fortran, pode ser usado no modo não supervisionado para avaliar as proximidades entre os pontos de dados e sempre utiliza o critério de vizinho mais próximo ou para predições que será o caso de uso para o dataset Titanic.
+
+É comum a separação dos dados em treino e teste ou validação que aqui é o titanic.treino titanic teste , e para auxiliar nessa etapa será usado pacote [randomForest](https://cran.r-project.org/web/packages/randomForest/randomForest.pdf). O algorotimo também chamado de árvore de decisão irá utilizar dos dados de treino para aprender sobre o banco de dados e o modelo gerado será testado com os dados de teste para que seja possível avaliar o quanto de erro o modelo possui. 
+
+Em seguida usando a função randomforest() é preciso informar uma fórmula que identifique o que deseja que o agoritimo faça, no caso o objetivo é prever quem irá sobreviver com base nas variáveis ; ou seja:
+
+$$ Survived = f(Pclass;sex_dummy ; Age ; SibSp ; Parch ; Fare ; Cabin; Embarked)$$
+
+```{r message=FALSE, warning=FALSE}
+
+library(randomForest)
+
+# Chamando os aquivos treino e teste 
+titanic.treino 
+titanic.teste
 
 
-  
+titanic.treino$Survived <- as.factor(titanic.treino$Survived)
+
+# Setando uma semente
+set.seed(1234)
+
+#Criando um modelo
+titanic.modelo.RF <- randomForest(Survived~ Pclass+sex_dummy+Age+SibSp+
+                                    Parch+Fare+Cabin+Embarked,
+                                  data = titanic.treino, ntree = 100, mtry = sqrt(length(titanic.treino)),
+                                  importance = T)
+varImpPlot(titanic.modelo.RF)
+
+
+```
+O gráfico de importância do modelo de Random Forest é separado em dois, do lado esquerdo o Mean Decrease Accuracy expressa o quanto o modelo perde ao excluir aquela variável. No resultado é notório a importância da variável sex_dummy como sendo a mais importante para o modelo. A ordem que as variáveis aparecem no eio y do gráfico é uma ordem de importância delas no auxílio do processo de classificação. Já o gráfico Mean Decrease Gini traz informação de quão importante é aquela variável na formação dos nós e folhas das árvores criadas, ou seja o quão importante é aquela variável para o modelo. Sendo o sex_dummy novamente a mais importante, acompanhada de Age e Fare.
+
+### **6.1 Avaliando as métricas do modelo Random Forest**
+
+Uma vez o modelo criado usando os dados treino o próximo passo é avaliar a acurácia do modelo e seus erros. Para isso os dados de teste serão empregados afim de obter métricas estatísticas do modelo. Importante para essa etapa é saber o quanto o modelo acertou e o quanto errou, ou seja falsos positivos e falsos negativos e verdadeiros positivos e verdadeiros negativos. Resumindo é necessário testar o modelo com os dados de teste e ver se o mesmo foi capaz de acertar as sua classificação. Para isso será utilizado o pacote [caret](https://cran.r-project.org/web/packages/caret/caret.pdf).
+
+```{r}
+library(caret)
+set.seed(1234)
+titanic.modelo.RF.predito <- predict(titanic.modelo.RF, titanic.teste)
+
+
+
+## Matriz de confusão do Random Forest
+titanic.gender.submission <- read.csv("gender_submission.csv")
+titanic.teste$Survived <- as.factor(titanic.gender.submission$Survived)
+
+matriz_confusao_RF <- confusionMatrix(data = titanic.modelo.RF.predito,
+                                      reference = titanic.teste$Survived)
+matriz_confusao_RF
+
+```
+O resumo estatístico do Modelo Random Forest para os dados do dataset Titanic apresentaram uma acuracia de 86%, uma sensitividade de 97% e uma especificidade de 68%. 
+Agora é preciso salvar os dados da classificação no formato que desejamos do csv do kaggle, onde apenas duas colunas são aceitas, a do PassengerId e da classificação Survived. 
+
+Os valores preditos estão na variavel titanic.modelo.RF.predito. Então vamos criar uma coluna no dataset titanic.kaggle, se chamará Survived_RF. Em seguida vamos abrir o dataset para compararos resultados. 
+
+Por fim salvar um arquivo csv com as duas colunas e submeter no kaggle. 
+
+
+```{r}
+# Passando os valores preditos pelo random Forest para o dataset kaggle
+titanic.kaggle$Survived_RF <- titanic.modelo.RF.predito
+
+# Selcionando as duas colunas e alterando os nomes das mesmas.
+titanic.kaggle_RF <- 
+  titanic.kaggle %>% select(PassengerId, Survived_RF)
+
+names(titanic.kaggle_RF) <- c("PassengerId","Survived")
+
+
+
+write.csv(titanic.kaggle_RF, file="titanic_kaggle_RF.csv",append = F,sep = ",", 
+          col.names = c("PassengerId","Survived"),row.names = F )
+
+```
 
