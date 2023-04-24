@@ -1,0 +1,463 @@
+---
+title: "Titanic - Regressão Logítisca Binária."
+output: html_notebook
+
+
+---
+
+### **1. Explicando o Desafio**
+
+O naufrágio do Titanic é um dos naufrágios mais infames da história.
+
+Em 15 de abril de 1912, durante sua viagem inaugural, o amplamente considerado “inafundável” RMS Titanic afundou após colidir com um iceberg. Infelizmente, não havia botes salva-vidas suficientes para todos a bordo, resultando na morte de 1.502 dos 2.224 passageiros e tripulantes.
+
+Embora houvesse algum elemento de sorte envolvido na sobrevivência, parece que alguns grupos de pessoas eram mais propensos a sobreviver do que outros.
+
+Neste desafio, pedimos que você construa um modelo preditivo que responda à pergunta: “que tipo de pessoa tem maior probabilidade de sobreviver?” usando os dados do passageiro (ou seja, nome, idade, sexo, classe socioeconômica, etc).
+
+A competição é simples: use o aprendizado de máquina para criar um modelo que preveja quais passageiros sobreviveram ao naufrágio do Titanic.
+
+### **2.Conhecendo a base de dados.**
+
+Primeiro a ser feito é entender qual a distribuição dos dados, conhecer a sua estrutura, ver quais são os tipos de variáveis. Em seguindo é preciso fazer uma extração de informações estatísticas sobre o banco o de dados. 
+
+Ao todo o desafio conta com 2 arquivos do tipo csv, então basta usar a função read.csv() da biblioteca [utils](https:\\cran.r-project.org\web\packages\R.utils\R.utils.pdf) para ler esses arquivos. É importante que esses arquivos sejam armazenados em um objeto no ambiente do Rstudio, para isso será atribuido um nome para cada base de dados, teste e treinio. 
+
+
+```{r warning=FALSE}
+# Carregando todos os pacotes para esse exemplo
+
+pacotes <- c("plotly","tidyverse","knitr","kableExtra","fastDummies","rgl","car",
+             "reshape2","jtools","stargazer","lmtest","caret","pROC","ROCR","nnet",
+             "magick","cowplot","globals","equatiomatic", "fastDummies", "gghalves","ggdist", "tidyquant")
+
+options(rgl.debug = TRUE)
+
+if(sum(as.numeric(!pacotes %in% installed.packages())) != 0){
+  instalador <- pacotes[!pacotes %in% installed.packages()]
+  for(i in 1:length(instalador)) {
+    install.packages(instalador, dependencies = T)
+    break()}
+  sapply(pacotes, require, character = T) 
+} else {
+  sapply(pacotes, require, character = T) 
+}
+
+```
+
+
+```{r message=FALSE, warning=FALSE}
+
+# Setando o diretorio
+setwd("C:/Users/rodolfo.paula/Desktop/PESSOAL_RODOLFO/Better Decisions/scripts/kaggle/titanic")
+
+# Lendo os arquivos
+
+titanic.treino <- read.csv("train.csv")
+
+titanic.treino <- na.omit(titanic.treino)
+
+
+titanic.teste <- read.csv("test.csv")
+titanic.teste <- na.omit(titanic.teste)
+
+
+dim(titanic.treino)
+dim(titanic.teste)
+```
+
+Os arquivos já estão armazenados em um banco de dados. Agora é preciso conhecer o banco de dados e entender quais são os tipos de dados de cada variável.
+
+```{r message=FALSE, warning=FALSE}
+
+# Extraindo informação sobre a estrutura e tipo de dados de cada variável.
+
+str(titanic.treino)
+str(titanic.teste)
+
+```
+A variável PassengerId é um identificador de cada passageiro, é do tipo inteiro e  não auxiliará a responder quem sobrevive ou não, assim como a variável Ticket e Name. A variável Survived é a var modelos de Supervisionados são os mais adequados, porque esses modelos são capazes de gerar as previsões com dados de fora da amostra, por isso é separado em dados de treino e teste. 
+
+Um sumário estatistico só faz sentindo para as variáveis quantitativas, por isso será selecionado no banco de dados de treino apenas as variaveis Pclass, Age, SibSp, Parch e Fare do restantate que é qualitativo.  A função summary() do pacote [r-base](https:\\stat.ethz.ch\R-manual\R-devel\library\base\html\00Index.html) auxiliará nessa extração. 
+
+```{r message=TRUE, warning=FALSE}
+# Extraindo as  variáveis quantitativas.
+titanic.treino.quanti <- titanic.treino[, c(3,6,7,8, 10)]
+
+# Extraindo as variáveis quantitativas.
+titanic.treino.quali <- titanic.treino[, c(1,2,4,5,6,9,11,12)]
+
+
+# Extraindo o sumário estatistico das quantitativas
+
+summary(titanic.treino.quanti)
+
+
+```
+
+Uma tabela de frequência vai trazer a informação de quantas pessoas sobreviveram e quantas morreram de acordo com o banco de dados de treino. Essa informação é um dado interessante para variavel Y do modelo. 
+
+```{r}
+#Tabela de frequências absolutas da variável 'Survived'
+table(titanic.treino$Survived) 
+
+```
+
+#########################################################################
+
+
+
+
+
+### **3. Criando o Modelo logistico Binário.**
+
+Ao olhar os dados e entendendo a pergunta, ou seja quem sobreviverá?, fica claro que se trata de um modelo logístico binário com probabilidade de ocorrer o evento y = 1 e de não ocorrer o evento y = 0 com base no comportamento das variáveis explicativas. Com isso é possível definir um vetor de variáveis explicativas, com respectivos parâmetros estimados. 
+
+$$ Z = \alpha + \beta.X1i + \beta2.X2 + .... + \beta k.Xk $$
+
+O Z é conhecido como logito, alpha uma constante, beta são parâmetros estimados para cada variável explicativa e Xi são os valores das variáveis explicativas em cada i observação. 
+
+O conceito de chance é muito empregado em regressão logística e pode ser calculado pela razão entre a probabilidade de ocorrer o evento e a probabilidade de não ocorrer o evento.
+
+$$ chance = \frac{Pi}{1-Pi}$$
+
+Na expressão a cima Pi é a probabilidade de ocorrência do evento e 1-Pi é a probabilidade da não ocorrência do evento. Desta maneira Pi + (1-Pi) = 1.
+
+A regressão logística binária define o logito Z como o logaritimo natural da chance:
+
+
+$$ ln(chance) = Z  $$ 
+
+Para definir uma expressão da probabilidade de ocorrência do evento em estudo em função do logito basta isolar matemáticamente o Pi que é a probabilidade da ocorrência do evento:
+
+$$ ln(\frac{Pi}{1-Pi}) = Z $$
+
+
+$$ \frac{Pi}{1-pi} = e^Z$$
+
+$$ Pi = (1-Pi).e^Z$$
+Probabilidade de ocorrência de um evento é: 
+ 
+$$ 
+Pi = \frac {e^Z}{1+e^Z}  = \frac{1}{1+e^-Z}  
+$$
+E a probabilidade de não ocorrência de um evento é :
+
+$$ 1-Pi = 1- \frac {e^Z}{1+e^Z} = \frac {1}{1+e^Z}$$
+### **3.1 Caractrerísticas de um modelo logítico.**
+
+
+Os modelos logísticos são modelos classificados como MLG (Modelos lineares Generalizados) e são caracterizados por apresentar uma distribuição de Bernoulli que fornece a probabilidade de sucesso ou fracasso da variável em questão na realização de um único experimento. 
+
+A regressão logística binária tem seus resultados interpretados em termos de porbabilidade e as variáveis preditoras ou explicativas Xn podem ser métricas ou não métricas. No entanto algumas variáveis como por exemplo o Sexo que apresenta dois valores, masculino e feminino, podem ser entendidos como binários mesmo sendo qualitativas. 
+
+No entanto  não se pode assumir valores arbitráios para a variável sexo, pois isso caracterizaria ponderação arbitrária. Para solucionar essa problemática e incluir essa variável no modelo de análise é importante damizar essa variável. 
+
+Assim as variáveis dummys devem ser utilizadas quando se deseja estudar a relação entre o comportamento de determinada variável explicativa qualitativa e o fenômeno em questão, representado pela variável dependente.
+
+```{r}
+titanic.treino$sex_dummy <- ifelse(titanic.treino$Sex == "male",yes = 1, no = 0 )
+
+```
+
+
+A estimação por máxima verossimilhança é a técnica mais utilizada para obetr os parâmetros de modelos de regressão logística. Como na regressão logística binária a variável dependente Y segue uma distribuição de Bernoulli, onde dois resultados são esperados o da porbabilidade de ocorrer o evento P1 e a de não ocorrer o evento 1-Pi, podemos escrever as probabilidades para a Y .
+
+
+
+$$  P(Y) = Pi^Y . (1-Pi) ^ (1-Y) $$
+O logarítmo da função de verossimilhanla mais conhecido por log likelihood function é usado para uma amostra de n observações.
+
+$$LL = \sum\limits_{i=1}^{\mbox{n}}{ [ (Yi).ln(\frac{e^Z}{1+e^Z})]+[(1-Yi).ln(\frac{1}{1+e^Z}) ] }$$
+
+
+Para a construção do modelo será usado a função glm() do pacote [stats](https:\\stat.ethz.ch\R-manual\R-devel\library\stats\html\00Index.html). Será preciso informar uma fórmula para determinar a y que será prevista, aqui no caso a variável Survived, e as explicativas a princípio serão todas exceto Name, ticket e PassengerID, pois são todas variáveis de identificação não serão úteis para o prever a sobrevivencia. 
+
+
+```{r}
+modelo_sobrevivencia <- glm(formula = Survived ~ Pclass + sex_dummy + Age + 
+                              SibSp + Parch + Fare + Embarked , 
+                      data = titanic.treino, 
+                      family = "binomial")
+```
+
+Com o modelo criado é preciso agroa obter o sumário estatistico deste modelo. A função summary() do pacote base é capaz de retornar as métricas para o bjeto modelo_sobreviencia.
+
+```{r}
+
+summary(modelo_sobrevivencia)
+```
+O resultado mostra quem nem todas as variáveis explicativas são relevantes para prever a sobrevivencia, isso para um nível 95% de significancia. O intercepto alpha do modelo é de 17.89 e não se mostoru estatisticamente relevante, no entanto ele descreve a equação matemática e é preciso leva-lo em consideração. Todas as variáveis que apresentam uma estatistica P (Pr(>|z|)) < 0.05 são importantes para o modelo as demais não. De posse disto temos que para prever a sobrevivencia de um passageiro precisamos basicamente de SibSp, Pclass, Sex_dummy e Age.
+
+Outra forma de obter o modelo é utilizando a função step() do pacote stats, o algoritimo por trás desta função é capaz de avaliar passo a passo, por isso o nome step, quais são as variáveis explicativas significantes para previsão da variável Y. 
+
+
+```{r}
+modelo_stepwise_sobrevivencia <- step(object = modelo_sobrevivencia,
+                        k = qchisq(p = 0.05, df = 1, lower.tail = FALSE))
+
+```
+
+Obtendo a estatística do modelo com stepwise.
+
+```{r}
+summ(model = modelo_stepwise_sobrevivencia, confint = T, digits = 4, ci.width = 0.95)
+```
+
+O modelo modelo_stepwise_sobrevivencia mostrou que apenas as variáveis Pclass, Sex_dummy, Age e SibSp são importantes para a construção do modelo. 
+O teste $X^2$ propcia condições à verificação de significancia do modelo, onde a hipotese nula é: 
+
+$$ Ho : \beta1=\beta2 = ... = \beta k = 0 $$
+e a hipotese alternativa é:
+$$ H1 : existe\hspace{0.2cm}pelo\hspace{0.2cm} menos\hspace{0.2cm} um\hspace{0.2cm} \beta \neq 0  $$
+Ele indica que para 4 graus de liberdade(número de variáveis explicativas consideradas na modelagem), ou seja 4 $\beta$, pelo menos 1 é diferente de 0 e assim podemos descartar a Hipótese nula e ficar com a hipótese alternativa de que pelo menos 1 $\beta$ é estatisticamente significante. 
+
+Conferimos esta etapa analisando o valor de p , se :
+
+$$ P-valor < 0.05, existe\hspace{0.2cm}pelo\hspace{0.2cm} menos\hspace{0.2cm} um\hspace{0.2cm} \beta \neq 0   $$
+
+
+```{r}
+
+extract_eq(modelo_stepwise_sobrevivencia, use_coefs = T,
+           wrap = T, show_distribution = T)
+ 
+
+```
+
+$$\begin{aligned}
+\operatorname{Survived} &\sim Bernoulli\left(\operatorname{prob}_{\operatorname{Survived} = \operatorname{1}}= \hat{P}\right) \\
+ \log\left[ \frac { \hat{P} }{ 1 - \hat{P} } \right] 
+ &= 5.6 - 1.32(\operatorname{Pclass}) - 2.62(\operatorname{sex\_dummy}) - 0.04(\operatorname{Age})\ - \\
+&\quad 0.38(\operatorname{SibSp})
+\end{aligned}$$
+
+
+
+
+
+
+
+```{r}
+logLik(modelo_stepwise_sobrevivencia)
+```
+
+```{r}
+stargazer(modelo_stepwise_sobrevivencia, nobs = T, type = "text")
+```
+
+```{r}
+
+confint(modelo_stepwise_sobrevivencia, level = 0.95)
+
+```
+
+```{r}
+titanic.teste$sex_dummy <- ifelse(titanic.teste$Sex == "male",yes = 1, no = 0 )
+
+
+sobrevivente_prob <- predict(object = modelo_stepwise_sobrevivencia, 
+        newdata = titanic.teste, 
+        type = "response")
+
+
+(sobrevivente_prob)
+
+```
+
+O resultado obtido foi a probabilidade Pi de cada PassengerID do banco de dados de teste, no entanto  para trabalhar com a variável sobrevivência só interessa dois valores 1 para sobreviver e 0 para não sobreviver. Para que isso seja feito será preciso trabalhar o conceito de cutoff ou um valor de corte, onde para determinada probabilidade o evento será classificado como evento ou não evento. 
+
+### **3.2. Cutoff **
+
+
+O cutoff nada mais é que um ponto de corte para que seja determinado um valor que a cima dele a observação seja classificada como evento e abaixo dele como não evento.
+
+$$Se \hspace{0.3cm} Pi\hspace{0.2cm} > \hspace{0.2cm}cutoff: a \hspace{0.2cm} observação\hspace{0.2cm} i \hspace{0.2cm}deverá\hspace{0.2cm}ser\hspace{0.2cm}classificada\hspace{0.2cm}como\hspace{0.2cm}evento.$$
+
+$$Se \hspace{0.3cm} Pi\hspace{0.2cm} < \hspace{0.2cm}cutoff: a \hspace{0.2cm} observação\hspace{0.2cm} i \hspace{0.2cm}deverá\hspace{0.2cm}ser\hspace{0.2cm}classificada\hspace{0.2cm}como\hspace{0.2cm}não\hspace{0.2cm}evento$$
+
+Aqui faremos o teste para escolher qual cutoff usar de acordo com as métricas obtidas pela análise de sensibilidade. Essas métricas são :
+
+-  EficiÊncia Global do Modelo:
+  $$EGM = \frac{True Positive + False Positive}{(TruePositive+TrueNegative+FalsePositive+FalseNegative)}
+  $$
+Corresponde ao percentual de acertos da classificação para um determindo cutoff. 
+
+- Sensitividade:
+
+  $$Sensitividade =  \frac{True Positive}{(TruePositive+TrueNegative)}$$
+A sensitividade diz respeito a percentual de acerto de observaçãoes classificadas como evento para um determinado cutoff
+ 
+- Especificidade:
+
+$$Especificidade = \frac{FalsePositive}{(FalsePositive+FalseNegative)}$$
+
+A especifidade diz respeito a capacidade de acertar os não eventos de acordo com um certo cutoff.
+
+Com o oconhecimento das métricas basta agora testar os valores de cutoff, que variam de 0 a 1. Testando os valores de cutoff de 0.5, ou seja se a probabilidade Pi for maior que 0.5 a observação será classificada como evento, se Pi for menor que 0.5 será classificada como não evento. 
+
+```{r}
+confusionMatrix(table(predict(modelo_stepwise_sobrevivencia, type = "response") >= 0.5,
+                      titanic.treino$Survived == 1)[2:1, 2:1])
+
+#Visualizando os principais indicadores desta matriz de confusão
+data.frame(Sensitividade = confusionMatrix(table(predict(modelo_stepwise_sobrevivencia,
+                                                         type = "response") >= 0.5,
+                                          titanic.treino$Survived == 1)[2:1, 2:1])[["byClass"]][["Sensitivity"]],
+           Especificidade = confusionMatrix(table(predict(modelo_stepwise_sobrevivencia,
+                                                          type = "response") >= 0.5,
+                                          titanic.treino$Survived  == 1)[2:1, 2:1])[["byClass"]][["Specificity"]],
+           Acurácia = confusionMatrix(table(predict(modelo_stepwise_sobrevivencia,
+                                                    type = "response") >= 0.5,
+                                         titanic.treino$Survived  == 1)[2:1, 2:1])[["overall"]][["Accuracy"]]) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = "striped", position = "center",
+                full_width = F, 
+                font_size = 27)
+
+
+```
+Para o valor de cutoff igual a 0.5 observa-se a maior capacidade do modelo em acertar as clasificações que não são evento, ou seja a especificidade é maior que a sensitividade e a acurácia foi de 80%. 
+
+Testando o valor de cutoff de 0.3 teremos dfirentes resultados para os valores de eficiencia global, sensitividade e especificidade.
+```{r}
+confusionMatrix(table(predict(modelo_stepwise_sobrevivencia, type = "response") >= 0.3,
+                      titanic.treino$Survived == 1)[2:1, 2:1])
+
+#Visualizando os principais indicadores desta matriz de confusão
+data.frame(Sensitividade = confusionMatrix(table(predict(modelo_stepwise_sobrevivencia,
+                                                         type = "response") >= 0.3,
+                                          titanic.treino$Survived == 1)[2:1, 2:1])[["byClass"]][["Sensitivity"]],
+           Especificidade = confusionMatrix(table(predict(modelo_stepwise_sobrevivencia,
+                                                          type = "response") >= 0.3,
+                                          titanic.treino$Survived  == 1)[2:1, 2:1])[["byClass"]][["Specificity"]],
+           Acurácia = confusionMatrix(table(predict(modelo_stepwise_sobrevivencia,
+                                                    type = "response") >= 0.3,
+                                         titanic.treino$Survived  == 1)[2:1, 2:1])[["overall"]][["Accuracy"]]) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = "striped", position = "center",
+                full_width = F, 
+                font_size = 27)
+
+```
+Analisando os valores das métricas para o cutoff de 0.3, observa-se que a sensitividade sobe consideravelmente enquanto a especificidade e acurácia caem, ou seja com esse cutoff o modelo esta performando melhor para as observações que são evento e pior nas que não são evento. 
+
+Agora o valor do cutoff será de 0.7. 
+
+```{r}
+
+confusionMatrix(table(predict(modelo_stepwise_sobrevivencia, type = "response") >= 0.7,
+                      titanic.treino$Survived == 1)[2:1, 2:1])
+
+#Visualizando os principais indicadores desta matriz de confusão
+data.frame(Sensitividade = confusionMatrix(table(predict(modelo_stepwise_sobrevivencia,
+                                                         type = "response") >= 0.7,
+                                          titanic.treino$Survived == 1)[2:1, 2:1])[["byClass"]][["Sensitivity"]],
+           Especificidade = confusionMatrix(table(predict(modelo_stepwise_sobrevivencia,
+                                                          type = "response") >= 0.7,
+                                          titanic.treino$Survived  == 1)[2:1, 2:1])[["byClass"]][["Specificity"]],
+           Acurácia = confusionMatrix(table(predict(modelo_stepwise_sobrevivencia,
+                                                    type = "response") >= 0.7,
+                                         titanic.treino$Survived  == 1)[2:1, 2:1])[["overall"]][["Accuracy"]]) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = "striped", position = "center",
+                full_width = F, 
+                font_size = 27)
+
+```
+
+Nesse caso com cutoff de 0.7 a especificidade é quem subiu mais em relação a sensitividade. 
+Por fim será testado os valores 0.4 e 0.6, possivelmente serão os mais equilibrados. 
+
+
+```{r}
+
+confusionMatrix(table(predict(modelo_stepwise_sobrevivencia, type = "response") >= 0.4,
+                      titanic.treino$Survived == 1)[2:1, 2:1])
+
+#Visualizando os principais indicadores desta matriz de confusão
+data.frame(Sensitividade = confusionMatrix(table(predict(modelo_stepwise_sobrevivencia,
+                                                         type = "response") >= 0.4,
+                                          titanic.treino$Survived == 1)[2:1, 2:1])[["byClass"]][["Sensitivity"]],
+           Especificidade = confusionMatrix(table(predict(modelo_stepwise_sobrevivencia,
+                                                          type = "response") >= 0.4,
+                                          titanic.treino$Survived  == 1)[2:1, 2:1])[["byClass"]][["Specificity"]],
+           Acurácia = confusionMatrix(table(predict(modelo_stepwise_sobrevivencia,
+                                                    type = "response") >= 0.4,
+                                         titanic.treino$Survived  == 1)[2:1, 2:1])[["overall"]][["Accuracy"]]) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = "striped", position = "center",
+                full_width = F, 
+                font_size = 27)
+
+```
+Como cutoff de 0.4 os valores das métricas são bem semelhantes, 79% para especificidade e eacurácia e 78% para a sensitividade.
+
+
+```{r}
+confusionMatrix(table(predict(modelo_stepwise_sobrevivencia, type = "response") >= 0.6,
+                      titanic.treino$Survived == 1)[2:1, 2:1])
+
+#Visualizando os principais indicadores desta matriz de confusão
+data.frame(Sensitividade = confusionMatrix(table(predict(modelo_stepwise_sobrevivencia,
+                                                         type = "response") >= 0.6,
+                                          titanic.treino$Survived == 1)[2:1, 2:1])[["byClass"]][["Sensitivity"]],
+           Especificidade = confusionMatrix(table(predict(modelo_stepwise_sobrevivencia,
+                                                          type = "response") >= 0.6,
+                                          titanic.treino$Survived  == 1)[2:1, 2:1])[["byClass"]][["Specificity"]],
+           Acurácia = confusionMatrix(table(predict(modelo_stepwise_sobrevivencia,
+                                                    type = "response") >= 0.6,
+                                         titanic.treino$Survived  == 1)[2:1, 2:1])[["overall"]][["Accuracy"]]) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = "striped", position = "center",
+                full_width = F, 
+                font_size = 27)
+
+
+```
+
+Com o valor de 0.6 par ao cutoff observa-se uma queda grande para o valor de sensitividade que foi para 66%, no entanto a especificidade foi para 91% e a acurácia foi para 81%. 
+
+Lembrando que a frenquecia de não evento é maior que a de evento, ou seja menos pessoas sobreviveram, a opção que garante o acerto de maior parate das observações e que tambem aresenta a melhor acurácia será a escolhida, no acaso o cutoff de 0.6
+
+
+### **4. Montando a tabela para o Kaggle**
+
+O arquivo que o Kaggle solicita para entregar na competição é uma tabela com o identificador do passageiro ou seja o PassaengerID e a coluna do evento Survived. 
+A probabilidade de cada passageiro sobreviver no arquivo de teste ja foi calculada e está armazenada no objeto sobrevivente_prob. O passo seguinte é utilizar o cutoff para cada valor de probabilidade e determinar se o mesmo se encaixa na clissaificação de evento ou não evento 
+
+Para isso será criado um dataframe com duas colunas PassernderID e Survived
+```{r}
+
+# Passando as probabilidades para o dataframe de teste para cada PassengerID
+titanic.teste$probabilidade <- sobrevivente_prob
+
+# Criando a coluna Survived no dataframe de teste
+titanic.teste$Survived <- ifelse(test = titanic.teste$probabilidade >= 0.6,
+                                 yes= 1, no = 0 )
+
+titanic.kaggle <- titanic.teste %>% 
+                select(PassengerId,Survived)
+
+
+titanic.kaggle
+
+
+```
+
+O objeto titanic.Kaggle é o datframe final do resultado do modelo de regressão logisitca binária com cutoff = 0.6 e acurácia de 86% que foi capaz de prever quais passageiros sobreviveram ao trágico acidente do titanic. 
+
+Agora o ultimo passo é salvar o arquivo em um csv.
+
+```{r}
+
+write.csv(titanic.kaggle, file="titanic_kaggle.csv",append = F,sep = ",", 
+          col.names = c("PassengerId","Survived"),row.names = F )
+
+```
+
+
+
+
+  
+
