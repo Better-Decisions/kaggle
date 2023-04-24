@@ -495,7 +495,7 @@ titanic.treino$Survived <- as.factor(titanic.treino$Survived)
 set.seed(1234)
 
 #Criando um modelo
-titanic.modelo.RF <- randomForest(Survived~ Pclass+sex_dummy+Age+SibSp+
+titanic.modelo.RF <- randomForest(formula = Survived~ Pclass+sex_dummy+Age+SibSp+
                                     Parch+Fare+Cabin+Embarked,
                                   data = titanic.treino, ntree = 100, mtry = sqrt(length(titanic.treino)),
                                   importance = T)
