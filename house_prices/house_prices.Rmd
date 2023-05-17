@@ -1,0 +1,90 @@
+---
+title: "House prices - Kaggle challenge"
+output: html_notebook
+---
+
+# 1.Objetivo do desafio
+
+  O objetivo do desafio House prices é prever o valor de venda de um imóvel de acordo com as 79 variáveis do banco de dados. O desafio desponibiliza 4 arquivos, um dataset de treino e um dataset de teste ambos em csv, um arquivo txt com a descrição das colunas do dataset treino e um arquivo csv exemplo de como o resultado deve ser submetido.
+  Para acessar mais informações sobre o desafio e fazer download dos dados basta acessar o [link](https://www.kaggle.com/competitions/house-prices-advanced-regression-techniques/overview).
+  
+# 2. Lendo os arquivos.
+
+```{r}
+# Carregando o tidyverse
+
+library(tidyverse)
+
+# Setando o diretório de trabalho
+setwd(dir = "C:/Users/rodolfo.paula/Desktop/PESSOAL_RODOLFO/Better Decisions/scripts/kaggle/house_prices")
+
+# Lendo os arquivos de treino e de teste
+train = read.csv("train.csv")
+test = read.csv("test.csv")
+
+# Visualizando as dimensões dos arquivos
+dim(train)
+dim(test)
+
+
+# Visualizando o dataset de treino 
+glimpse(train)
+
+# Obtendo um sumário dos dados de treino
+
+summary(train)
+
+```
+Utilizando o sumário fica claro que o banco de dados de treino possui muitas variáveis. Vamos incialmente separar o banco de dados em variáveis qualitativas e variáveis quantitativas, assim se torna mais facil o tratamento e limpeza dos dados.
+
+Para as variáveis qualitativas que apresentem valores faltantes ou NA`s vamos substituir pela moda daquela variável e para as variáveis quantitativas de que apresentem valores faltantes vamos substituir pela média. 
+
+A coluna Id será eliminada por ser um valor sequencial que nao representa nehuma informação útil como variável explicativa capaz de influenciar no valor predito do preço de venda de uma casa.
+
+Para separar o dataset em dados quantitativos e qualitativos o melhor caminho é usara a função [select_if()](https://www.rdocumentation.org/packages/dplyr/versions/0.5.0/topics/select_if) do pacote dplyr
+
+
+```{r}
+
+# Separando o dataframe em train quanti e train quali usando a função select_if
+
+train_quanti <- select_if(train, is.numeric)
+train_quali <- select_if(train, is.character)
+
+# Tratando cada dataframe sepamente 
+
+## Quali 
+
+glimpse(train_quali)
+
+print(dim(train_quali))
+## Procurando Valores missing
+colSums(is.na(train_quali))
+
+```
+
+Com essa analise a cima sabemos o seguinte sobre os nossos dados categóricos:
+
+- Temos 1460 observações e 43 variáveis
+- Das 43 variáveis 15 apresentam valores faltantes (NA)
+- Das 15 variáveis com valores nulos podemos concluir que:
+  --Alley  , PoolQC, Fence e MisFeature são mais de 90% de valores faltantes, sendo mais coerente a exclusão destas do nosso banco de dado.
+- As variáveis restantes que apresentam valores nulos serão tratadas e o valor da moda será usado para substituir os valores NA`s.
+
+```{r}
+
+# Deletando as colunas que não são de interesse para o dataset. 
+
+train_quali <-train_quali %>% select(-c(Alley, PoolQC, Fence, MiscFeature))
+print(dim(train_quali))
+
+
+# Contando os valores NA`s das variáveis com missing values
+
+table(train_quali$MasVnrType)
+ifelse(test = )
+
+```
+
+
+  
