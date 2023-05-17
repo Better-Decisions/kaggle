@@ -19,8 +19,8 @@ library(tidyverse)
 setwd(dir = "C:/Users/rodolfo.paula/Desktop/PESSOAL_RODOLFO/Better Decisions/scripts/kaggle/house_prices")
 
 # Lendo os arquivos de treino e de teste
-train = read.csv("train.csv")
-test = read.csv("test.csv")
+train = data.frame(read.csv("train.csv"))
+test = data.frame(read.csv("test.csv"))
 
 # Visualizando as dimensões dos arquivos
 dim(train)
@@ -69,7 +69,7 @@ Com essa analise a cima sabemos o seguinte sobre os nossos dados categóricos:
 - Das 43 variáveis 15 apresentam valores faltantes (NA)
 - Das 15 variáveis com valores nulos podemos concluir que:
   --Alley  , PoolQC, Fence e MisFeature são mais de 90% de valores faltantes, sendo mais coerente a exclusão destas do nosso banco de dado.
-- As variáveis restantes que apresentam valores nulos serão tratadas e o valor da moda será usado para substituir os valores NA`s.
+- As variáveis restantes que apresentam valores nulos serão tratadas e o valor da moda será usado para substituir os valores NA`s. 
 
 ```{r}
 
@@ -79,12 +79,158 @@ train_quali <-train_quali %>% select(-c(Alley, PoolQC, Fence, MiscFeature))
 print(dim(train_quali))
 
 
+
+# Lista com as variáveis : MasVnrType,BsmtQual,BsmtCond,BsmtExposure,BsmtFinType1,BsmtFinType2,Electrical,
+# FireplaceQu,GarageType,GarageFinish,GarageQual,GarageCond
+##############################################################
 # Contando os valores NA`s das variáveis com missing values
+unique(train_quali$MasVnrType)
+sort(table(train_quali$MasVnrType))
 
-table(train_quali$MasVnrType)
-ifelse(test = )
+# Alterando os valores de NA para o valor da Moda de MasVnrType.
+train_quali <- train_quali %>% mutate(MasVnrType=coalesce(MasVnrType,"None"))
 
+##############################################
+# Contando os valores NA`s das variáveis com missing values
+unique(train_quali$BsmtQual)
+
+sort(table(train_quali$BsmtQual))
+
+# Alterando os valores de NA para o valor da Moda de BsmtQual.
+train_quali <- train_quali %>%    
+  mutate(BsmtQual=coalesce(BsmtQual,"TA"))
+
+##############################################
+
+# Contando os valores NA`s das variáveis com missing values
+unique(train_quali$BsmtCond)
+
+sort(table(train_quali$BsmtCond))
+
+# Alterando os valores de NA para o valor da Moda de BsmtCond
+train_quali <- train_quali %>%    
+  mutate(BsmtCond=coalesce(BsmtCond,"TA"))
+
+##############################################
+
+# Contando os valores NA`s das variáveis com missing values
+unique(train_quali$BsmtExposure)
+
+sort(table(train_quali$BsmtExposure))
+
+# Alterando os valores de NA para o valor da Moda de BsmtExposure
+train_quali <- train_quali %>%    
+  mutate(BsmtExposure=coalesce(BsmtExposure,"No"))
+
+##############################################
+
+# Contando os valores NA`s das variáveis com missing values
+unique(train_quali$BsmtFinType1)
+
+sort(table(train_quali$BsmtFinType1))
+
+# Alterando os valores de NA para o valor da Moda de BsmtFinType1
+train_quali <- train_quali %>%    
+  mutate(BsmtFinType1=coalesce(BsmtFinType1,"Unf"))
+##############################################
+
+# Contando os valores NA`s das variáveis com missing values
+unique(train_quali$BsmtFinType2)
+
+sort(table(train_quali$BsmtFinType2))
+
+# Alterando os valores de NA para o valor da Moda de BsmtFinType2
+train_quali <- train_quali %>%    
+  mutate(BsmtFinType2=coalesce(BsmtFinType2,"Unf"))
+
+##############################################
+
+# Contando os valores NA`s das variáveis com missing values
+unique(train_quali$Electrical)
+
+sort(table(train_quali$Electrical))
+
+# Alterando os valores de NA para o valor da Moda de Electrical
+train_quali <- train_quali %>%    
+  mutate(Electrical=coalesce(Electrical,"SBrkr"))
+
+
+##############################################
+
+# Contando os valores NA`s das variáveis com missing values
+unique(train_quali$FireplaceQu)
+
+sort(table(train_quali$FireplaceQu))
+
+# Alterando os valores de NA para o valor da Moda de FireplaceQu
+train_quali <- train_quali %>%    
+  mutate(FireplaceQu=coalesce(FireplaceQu,"Gd"))
+
+##############################################
+
+# Contando os valores NA`s das variáveis com missing values
+unique(train_quali$GarageType)
+
+sort(table(train_quali$GarageType))
+
+# Alterando os valores de NA para o valor da Moda de GarageType
+train_quali <- train_quali %>%    
+  mutate(GarageType=coalesce(GarageType,"Attchd"))
+
+##############################################
+
+# Contando os valores NA`s das variáveis com missing values
+unique(train_quali$GarageFinish)
+
+sort(table(train_quali$GarageFinish))
+
+# Alterando os valores de NA para o valor da Moda de GarageFinish
+train_quali <- train_quali %>%    
+  mutate(GarageFinish=coalesce(GarageFinish,"Unf"))
+
+##############################################
+
+# Contando os valores NA`s das variáveis com missing values
+unique(train_quali$GarageQual)
+
+sort(table(train_quali$GarageQual))
+
+# Alterando os valores de NA para o valor da Moda de GarageQual
+train_quali <- train_quali %>%    
+  mutate(GarageQual=coalesce(GarageQual,"TA"))
+
+##############################################
+
+# Contando os valores NA`s das variáveis com missing values
+unique(train_quali$GarageCond)
+
+sort(table(train_quali$GarageCond))
+
+# Alterando os valores de NA para o valor da Moda de GarageCond
+train_quali <- train_quali %>%    
+  mutate(GarageCond=coalesce(GarageCond,"TA"))
+
+colSums(is.na(train_quali))
+
+
+list = list("MasVnrType","BsmtQual","BsmtCond","BsmtExposure",
+         "BsmtFinType1","BsmtFinType2","Electrical")
+# FireplaceQu,GarageType,GarageFinish,GarageQual,GarageCond
+
+for(item in colnames(train_quali)){
+  
+ #print(item) 
+ x = data.frame(sort(table(train_quali[item])))
+ #print(x)
+ mode = tail(x, n = 1)
+ #print(mode)
+ moda = (mode[1,1])
+ #print(as.character(moda))
+ #print(train_quali[item])
+ train_quali[item] <- train_quali[item][ train_quali[item]  ==  NA ] <-  moda
+  
+}
+
+as.data.frame.character(item)
 ```
-
-
   
