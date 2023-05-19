@@ -51,17 +51,19 @@ Para separar o dataset em dados quantitativos e qualitativos o melhor caminho é
 train_quanti <- select_if(train, is.numeric)
 train_quali <- select_if(train, is.character)
 
-# Tratando cada dataframe sepamente 
 
-## Quali 
+```
+# 3. Limpesa de dados Qualitativos
 
+```{r}
+#Visualizando os dados 
 glimpse(train_quali)
 
-print(dim(train_quali))
-## Procurando Valores missing
+# Procurando Valores missing
 colSums(is.na(train_quali))
 
 ```
+
 
 Com essa analise a cima sabemos o seguinte sobre os nossos dados categóricos:
 
@@ -210,27 +212,253 @@ sort(table(train_quali$GarageCond))
 train_quali <- train_quali %>%    
   mutate(GarageCond=coalesce(GarageCond,"TA"))
 
+
+```
+No entanto, alterar na mão cada variável não é a solução mais inteligente, imagine um caso de um dataset com centenas ou até milhares de variáveis para serem alteradas.
+
+O melhor a ser feito é loop do tipo for, capaz de varrer todas as variáveis, obter o valor de frequencia para cada valor e armazenar este com a moda e em seguida substituir os missing values de cada variável. 
+
+Vamos então carregar o banco de dados novamente para anular as transformações realizadas e separar em dados quantitativos e qualitativos e em seguida somar os valores NA`s das variáveis. 
+
+```{r}
+
+# Somando os valores NA`s para cada coluna
 colSums(is.na(train_quali))
 
-
-list = list("MasVnrType","BsmtQual","BsmtCond","BsmtExposure",
-         "BsmtFinType1","BsmtFinType2","Electrical")
-# FireplaceQu,GarageType,GarageFinish,GarageQual,GarageCond
-
+# Montando um loop do tipo for 
 for(item in colnames(train_quali)){
   
- #print(item) 
- x = data.frame(sort(table(train_quali[item])))
- #print(x)
- mode = tail(x, n = 1)
- #print(mode)
- moda = (mode[1,1])
- #print(as.character(moda))
- #print(train_quali[item])
- train_quali[item] <- train_quali[item][ train_quali[item]  ==  NA ] <-  moda
+  x = data.frame(sort(table(train_quali[item])))
+  #print(x)
+  mode = tail(x, n = 1)
+  #print(mode)
+  moda = (mode[1,1])
+  moda <- (as.character(moda))
+  #print(moda)
+  train_quali <- train_quali %>% 
+  mutate(across(item, ~ case_when(is.na(.) ~ moda, TRUE ~ .)))
+  
+  
   
 }
 
-as.data.frame.character(item)
+# testando o resultado
+unique(train_quali$Street)
+table(train_quali$Street)
+# Somando os valores NA`s para cada coluna para conferir os resultados 
+colSums(is.na(train_quali))
+```
+
+# 4. Limpeza de dados quantitativos
+
+Da mesma maneira que realizamos a limpeza dos dados faltantes no banco de dados qualitativos iniciamos aqui a limpeza de dados faltantes nos dados quantitativos
+
+```{r}
+# Visualizando os dados 
+glimpse(train_quanti)
+
+# Somando os valores faltantes
+colSums(is.na(train_quanti))
+
+
 ```
   
+Com o resultado do somatório dos valores ausentes por variável do banco de dados quantitativos, observamos que apenas 3 variáveis possuem missing values. Sendo assim a melhor opção é utilizar a função mutate() e substituir os NA`s pela média entre as observações para cada variável. 
+
+```{r}
+# LotFrontage
+train_quanti <- train_quanti %>%    
+  mutate(LotFrontage=coalesce(LotFrontage,
+                              mean(x =train_quanti$LotFrontage, na.rm = T )))
+
+# MasVnrArea
+train_quanti <- train_quanti %>%    
+  mutate(MasVnrArea=coalesce(MasVnrArea,
+                              mean(x =train_quanti$MasVnrArea, na.rm = T )))
+
+# GarageYrBlt
+train_quanti <- train_quanti %>%    
+  mutate(GarageYrBlt=coalesce(GarageYrBlt,
+                              mean(x =train_quanti$GarageYrBlt, na.rm = T )))
+
+# Conferindo se ainda existe valores faltantes:
+colSums(is.na(train_quanti))
+
+```
+# 5. Unindo os dataframes quali e quanti de treino 
+
+Após a limpeza dos dados de forma adequada de acordo com o tipo de dado, onde para os dados categóricos nós utilizamos o valor da moda para substituir os missing values e o valor da media para substituir os dados ausente nos dados quantitativos, podemos com segurança unir esse bancos de dados em apenas um banco de dado já tratado e pronto para a etapa de análise de dados. 
+
+```{r}
+
+# Unindo os bancos de dados
+
+train.clean <- cbind(train_quali,train_quanti)
+names(train.clean)
+```
+
+# 6. Limpando os dados de teste.
+
+Da mesma forma que procedemos com os dados de treino iremos abordar agora os dados de teste e deixar todos os nossos bancos de dados prontos para a etapa de análise exploratória de dados. 
+A primeira etapa será a separação em dados qualitativos e dados quantitativos, seguido da limpeza  dos valores ausentes e por fim a união dos bancos quali e quanti de teste em apenas um dataframe tratado. 
+
+```{r}
+# Visualizando os dados de teste
+glimpse(test)
+
+# separando os dados de teste em quanti e quali
+
+test_quanti <- select_if(test, is.numeric)
+
+test_quali <- select_if(test, is.character)
+
+# Visualizando o resultado
+
+glimpse(test_quali)
+glimpse(test_quanti)
+
+# Tratando os dados qualitativos
+
+colSums(is.na(test_quali))
+
+
+# Observe que temos os mesmos problemas, existem variável que são praticamente nulas, sendo
+# a melhor escolha deletar elas do nosso banco de dados. 
+
+test_quali <- test_quali %>% select(-c(Alley, PoolQC, Fence, MiscFeature))
+glimpse(test_quali)
+
+
+# Aplicando o mesmo loop for para tratar os dado de teste qualitativos.
+
+for(item in colnames(test_quali)){
+  #print(item) 
+  x = data.frame(sort(table(test_quali[item])))
+  #print(x)
+  mode = tail(x, n = 1)
+  #print(mode)
+  moda = (mode[1,1])
+  moda <- as.character(moda)
+  #print(train_quali[item])
+  test_quali <- test_quali %>% 
+  mutate(across(item, ~ case_when(is.na(.) ~ moda, TRUE ~ .)))
+}
+
+# Conferindo a soma dos valores nulos nas colunas após a transformção 
+unique(test_quali$MasVnrType)
+table(test_quali$MasVnrType)
+colSums(is.na(test_quali))
+
+
+#############################
+
+# Tratando os dados quantitativos 
+
+# visuaizando os dados
+glimpse(test_quanti)
+
+# Conferindo os valores ausentes
+
+colSums(is.na(test_quanti))
+
+# Ao todo temos 8 variaveis que apresentam valores ausentes.
+test_quanti <- test_quanti %>%    
+  mutate(LotFrontage=coalesce(LotFrontage,
+                              mean(x =test_quanti$LotFrontage, na.rm = T )))
+test_quanti <- test_quanti %>%    
+  mutate(MasVnrArea=coalesce(MasVnrArea,
+                              mean(x =test_quanti$MasVnrArea, na.rm = T )))
+test_quanti <- test_quanti %>%    
+  mutate(BsmtFinSF1 =coalesce(BsmtFinSF1 ,
+                              mean(x =test_quanti$BsmtFinSF1 , na.rm = T )))
+
+test_quanti <- test_quanti %>%    
+  mutate(BsmtFinSF2 =coalesce(BsmtFinSF2 ,
+                              mean(x =test_quanti$BsmtFinSF2 , na.rm = T )))
+
+test_quanti <- test_quanti %>%    
+  mutate(BsmtUnfSF =coalesce(BsmtUnfSF ,
+                              mean(x =test_quanti$BsmtUnfSF , na.rm = T )))
+
+
+test_quanti <- test_quanti %>%    
+  mutate(TotalBsmtSF =coalesce(TotalBsmtSF ,
+                              mean(x =test_quanti$TotalBsmtSF , na.rm = T )))
+
+test_quanti <- test_quanti %>%    
+  mutate(BsmtFullBath =coalesce(BsmtFullBath ,
+                              mean(x =test_quanti$BsmtFullBath , na.rm = T )))
+
+test_quanti <- test_quanti %>%    
+  mutate(BsmtHalfBath =coalesce(BsmtHalfBath ,
+                              mean(x =test_quanti$BsmtHalfBath , na.rm = T )))
+
+
+test_quanti <- test_quanti %>%    
+  mutate(GarageYrBlt =coalesce(GarageYrBlt ,
+                              mean(x =test_quanti$GarageYrBlt , na.rm = T )))
+
+
+test_quanti <- test_quanti %>%    
+  mutate(GarageCars =coalesce(GarageCars ,
+                              mean(x =test_quanti$GarageCars , na.rm = T )))
+
+
+test_quanti <- test_quanti %>%    
+  mutate(GarageArea =coalesce(GarageArea ,
+                              mean(x =test_quanti$GarageArea , na.rm = T )))
+
+colSums(is.na(test_quanti))
+
+# Juntando os dataframes
+
+test.clean <- cbind(test_quali,test_quanti)
+
+
+
+```
+
+Por fim, cabe agora conferir os dados de treino e teste tratados
+
+```{r}
+
+colSums(is.na(train.clean))
+colSums(is.na(test.clean))
+
+
+```
+# 7. Análise Exploratória de Dados.
+
+Nesta etapa iniciaremos uma analise descritiva tanto das variáveis qualitativas como quantitativas do banco de dados de treino.  Para os dados quantitativos abordaremos em primeira instancia uma investigação por estatistica decritiva univariada e depois bivariada para entender a sua relação com a variavel Y do problema que é a SalesPrice. 
+
+### 7.1 Estatistica Descritiva para dados Qualitativos.
+A estatistica univariada para  contempla tabelas de ferequencia de ocorrencia o que já vimos anteriormente ao obtermos a moda, representação gráfica da distribuição e medidas de localização, dispersão ou variabilidade e medidas de forma(assimetria e curtosis).
+
+A tabela de distribuição de frequências é calculada para cada valor discreto da variável. A frequência pode ser absoluta que informa o número de ocorrências de cada elemento i na amostra, pode ser uma frequência relativa que fornece a porcentagem % relativa à frequência absoluta, pode ser uma frequência acumulada que representa a soma de todos os elementos e por fim pode ser uma frequência relativa acumulada que é a frequencia relativa à acumulada. 
+
+```{r}
+
+# Carregando os pacotes. 
+
+library(ggplot2)
+library(plotly)
+
+# Calculo das frequencias absolutas 
+for (item in colnames(train_quali)){
+  frequencia_abs_variavel <- data.frame(table(train_quali[item]))[1]
+  frequencia_abs_valor <- data.frame(table(train_quali[item]))[2]
+  #print(frequencia_abs_variavel)
+  freq_abs_train_quanti <-  data.frame(variavel = frequencia_abs_variavel,freq_abs= frequencia_abs_valor)
+  
+
+ 
+}
+
+
+
+
+
+
+```
+
+
