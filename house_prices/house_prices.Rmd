@@ -443,21 +443,78 @@ A tabela de distribuição de frequências é calculada para cada valor discreto
 library(ggplot2)
 library(plotly)
 
-# Calculo das frequencias absolutas 
-for (item in colnames(train_quali)){
-  frequencia_abs_variavel <- data.frame(table(train_quali[item]))[1]
-  frequencia_abs_valor <- data.frame(table(train_quali[item]))[2]
-  #print(frequencia_abs_variavel)
-  freq_abs_train_quanti <-  data.frame(variavel = frequencia_abs_variavel,freq_abs= frequencia_abs_valor)
-  
 
- 
+# Calculo das frequencias absolutas 
+
+tabela.freq.MSZoning <- as.data.frame(sort(table(train_quali$MSZoning)))
+colunas <- c ("MSZoning", "Freq")
+names(tabela.freq.MSZoning) <- colunas
+
+# Barras verticias 
+ggplotly(
+ggplot(data = tabela.freq.MSZoning, aes(x = MSZoning, y = Freq))+
+  geom_bar(stat = "identity", fill = "blue", color = "black")+
+    theme_classic(base_size = 18) 
+)
+
+
+# Barras empilhadas
+ggplotly(
+tabela.freq.MSZoning %>% 
+  ggplot(aes(x = "", y = Freq, fill = MSZoning, label = Freq))+
+  geom_bar(stat = "identity", width = 0.3) + coord_flip() + 
+  geom_label(position = position_stack(vjust = 0.5))+
+  theme_void()
+)
+
+
+```
+
+Desta maneira criamos uma forma eficiente de exploramos o banco de dados para as variáveis categóricas. 
+Como temos 39 variáveis exploratórias o melhor a fazer é criar um função que nos retorne essas três informações, a tabela de frequência, o grafico de barras verticais e grafico de barras empilhadas. 
+
+Então vamos colocar a mão na massa!!
+
+
+```{r}
+analise_explo_categorica <- function(serie){
+  
+  # Calculo das frequencias absolutas 
+
+  tabela.freq <- as.data.frame(sort(table(serie)))
+  colunas <- c ("Variavel", "Freq")
+  names(tabela.freq) <- colunas
+  
+  #Grafico de barras verticais
+  g1 <- ggplotly(
+  ggplot(data = tabela.freq, aes(x = Variavel, y = Freq))+
+  geom_bar(stat = "identity", fill = "blue", color = "black")+
+  theme_classic(base_size = 18) 
+)
+  
+  # Barras empilhadas
+  g2 <- ggplotly(
+  tabela.freq %>% 
+  ggplot(aes(x = "", y = Freq, fill = Variavel, label = Freq))+
+  geom_bar(stat = "identity", width = 0.3) + coord_flip() + 
+  geom_label(position = position_stack(vjust = 0.5))+
+  theme_void()
+)
+  retornos <- list(tabela.freq, g1, g2)
+
+  return(retornos)
+  
 }
 
+train_quali$HouseStyle
+resultado_MSZoning <- analise_explo_categorica(serie =  train_quali$MSZoning)
 
+resultado_MSZoning[[3]]
 
+resultado_Street <- analise_explo_categorica(serie = train_quali$Street)
 
-
+resultado_HouseStyle <- analise_explo_categorica(serie=train_quali$HouseStyle)
+resultado_HouseStyle
 
 ```
 
