@@ -517,5 +517,134 @@ resultado_HouseStyle <- analise_explo_categorica(serie=train_quali$HouseStyle)
 resultado_HouseStyle
 
 ```
+# 8. Análise exploratória dos dados quantitativos
 
+
+A análise exploratória de dados quantitativos os principais gráficos que irão trazer informações importantes são de linha, dispersão, histograma e box plot. 
+
+Vamos então analisar o nosso banco de dados de treino que contem as variáveis quantitativas, e além de fazer essas visualizações também iremos inserir os gráficos de correlação e heatmap. 
+
+A nossa variável Y  SalePrice, ou seja a que queremos prever, é qualitativa então vamos começar a análise por ela e sugerir posteriores correlações com as outras variáveis. 
+
+Usaremos o pacote [e1071](https://cran.r-project.org/web/packages/e1071/e1071.pdf) para obtermos os gráficos de densidade e análisarmos as assimetrias da distribuição de algumas Variáveis.
+
+```{r}
+# Olhando os nomes das variáveis esse bancod de dados quantitativos.
+names(train_quanti)
+
+# Extraindo o sumário estatistico
+
+summary(train_quanti)
+
+library(e1071)
+
+par(mfrow=c(3,2)) 
+
+# Preço do Imóvel
+plot(density(train_quanti$SalePrice), main="Density Plot: Sale Price", ylab="Frequency",
+     sub=paste("Assimetria:", round(e1071::skewness(train_quanti$SalePrice), 2)))  
+polygon(density(train_quanti$SalePrice), col="green")
+
+# Número de quartos
+plot(density(train_quanti$BedroomAbvGr), main="Density Plot: Bedroom", ylab="Frequency",
+     sub=paste("Assimetria:", round(e1071::skewness(train_quanti$BedroomAbvGr), 2)))  
+polygon(density(train_quanti$BedroomAbvGr), col="orange")
+
+# Números de Banheiros
+plot(density(train_quanti$FullBath), main="Density Plot: Bathroom", ylab="Frequency",
+     sub=paste("Assimetria:", round(e1071::skewness(train_quanti$FullBath), 2)))  
+polygon(density(train_quanti$FullBath), col="green")
+
+# Área do terreno
+plot(density(train_quanti$LotArea), main="Density Plot: Lot Area in feet", ylab="Frequency",
+     sub=paste("Assimetria:", round(e1071::skewness(train_quanti$LotArea), 2)))  
+polygon(density(train_quanti$LotArea), col="orange")
+
+# Ano de Construção
+plot(density(train_quanti$YearBuilt), main="Density Plot: Year Built", ylab="Frequency",
+     sub=paste("Assimetria:", round(e1071::skewness(train_quanti$YearBuilt), 2)))  
+polygon(density(train_quanti$YearBuilt), col="green")
+
+
+# Área da garagem
+plot(density(train_quanti$GarageArea), main="Density Plot: Garage Area", ylab="Frequency",
+     sub=paste("Assimetria:", round(e1071::skewness(train_quanti$GarageArea), 2)))  
+polygon(density(train_quanti$GarageArea), col="orange")
+
+
+```
+
+Vamos analisar os preços dos imóveis de acordo com o número de quartos, números de banheiros e vagas de garagem. Para isso vamos utilizar o boxplot e ver a variação dos valores e se ocorrem outliers para esses pares, a biblioteca ggplot auxiliará nessa etapa. 
+
+
+```{r}
+library(plotly)
+
+lista=c("FullBath","BedroomAbvGr","GarageCars")
+legenda=c("Valor do imovel pela numero de banheiros",
+          "Valor do imovel pelo numero de quartos",
+          "Valor do imovel pelo numero de vagas")
+
+plot.boxes<-function(X,legenda){
+  ggplotly(
+    ggplot(train_quanti,aes_string(x=X, y="SalePrice",group=X, fill = X))+
+      geom_boxplot() + labs(title = legenda)+
+    theme_classic()
+  )
+  
+}
+
+Map(plot.boxes,lista,legenda)
+```
+De fato essas variáveis são bem interessante para analisarmos como elas se comportam com a variavel Y SalePrice. No entanto o mais importante agora é investigarmos as correlações entre as variáveis.  Para isso vamos utilizar a correlação de Pearson que encontramos no pacote ggcorplot.
+
+```{r}
+library(ggcorrplot)
+
+
+corr <- round(cor(train_quanti), 1)
+
+# Plot
+
+ggplotly(
+  ggcorrplot(corr,
+           type = "lower",
+           lab = F, 
+           lab_size = 5,  
+           colors = c("tomato2", "white", "springgreen3"),
+           title="Correlogram of House Prices Kaggle Dataset", 
+           ggtheme=theme_bw)
+)
+
+```
+
+Assim foi possivel observar quem possui maior correlação positiva ou negativa com a variável Sale Price. Vamos agora tentar roda uma regressão linear que possa se capaz de explicar o comportamento do preço do imóvel em relação as outras variáveis. Para isso vamos criar uma função 
+
+
+```{r}
+lrg_house_prices <- function(serie){
+  grafico <- 
+    ggplotly(
+    ggplot(train_quanti,aes(y=SalePrice,x=serie)) +
+         geom_point() + 
+          xlim(0, max(serie)) +
+          ylim(0, max(train_quanti$SalePrice)) +
+          geom_smooth(formula = y ~ x,method="lm")
+    )
+    return(grafico)
+}
+
+lrg_house_prices(serie = train_quanti$YearBuilt)
+lrg_house_prices(serie = train_quanti$YearRemodAdd)
+lrg_house_prices(serie = train_quanti$LotFrontage)
+lrg_house_prices(serie = train_quanti$GrLivArea)
+lrg_house_prices(serie = train_quanti$GarageCars)
+lrg_house_prices(serie = train_quanti$FullBath)
+lrg_house_prices(serie = train_quanti$TotalBsmtSF)
+lrg_house_prices(serie = train_quanti$GarageCars)
+lrg_house_prices(serie = train_quanti$X1stFlrSF)
+
+
+
+```
 
